@@ -24,6 +24,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'apps.accounts',
+    'apps.game',
+    'apps.characters',
+    'apps.levels',
+    'apps.enemies',
+    'apps.items',
+    'apps.quests',
+    'apps.achievements',
+    'apps.leaderboard',
 ]
 
 MIDDLEWARE = [
@@ -55,6 +64,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # Database
@@ -126,7 +136,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-LOGIN_URL = '/users/login/'
+LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
