@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Realm - BlumJ</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'game/css/game.css' %}">
+</head>
+<body>
+
+    <div id="game-container">
+
+        <!-- HUD -->
+        <div id="hud">
+            <div class="hud-left">
+                <div class="hud-name" id="hud-char-name">...</div>
+                <div class="hud-bar-row">
+                    <span class="hud-label hp">HP</span>
+                    <div class="hud-bar hp-bar">
+                        <div class="hud-bar-fill" id="hp-fill"></div>
+                    </div>
+                    <span class="hud-value" id="hp-value">--/--</span>
+                </div>
+                <div class="hud-level" id="hud-level">LVL 1</div>
+            </div>
+
+            <div class="hud-right">
+                <div class="hud-bar-row">
+                    <span class="hud-label xp">XP</span>
+                    <div class="hud-bar xp-bar">
+                        <div class="hud-bar-fill" id="xp-fill"></div>
+                    </div>
+                </div>
+                <div class="hud-gold">
+                    <span class="hud-label gold">GOLD</span>
+                    <span class="hud-value" id="gold-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas -->
+        <div id="canvas-frame">
+            <canvas id="game-canvas" width="960" height="540"></canvas>
+            <div id="vignette"></div>
+
+            <div id="loading-overlay">
+                <span>Загрузка персонажа...</span>
+            </div>
+
+            <div id="pause-overlay" class="hidden">
+                <span class="pause-title">ПАУЗА</span>
+                <span class="pause-hint">ESC — продолжить</span>
+            </div>
+
+            <div id="death-overlay" class="hidden">
+                <span class="death-title">ТЫ УМЕР</span>
+                <div class="death-buttons">
+                    <button id="btn-restart" class="death-btn">РЕСТАРТ</button>
+                    <button id="btn-exit" class="death-btn death-btn-disabled" disabled
+                            title="Появится в Этапе 9 (Level System)">
+                        Выйти к выбору уровня
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls hint -->
+        <div id="controls-bar">
+            <span><b>A/D</b> движение</span>
+            <span><b>W / Space</b> прыжок</span>
+            <span><b>J</b> атака</span>
+            <span><b>K</b> способность</span>
+            <span><b>E</b> взаимодействие</span>
+            <span><b>ESC</b> пауза</span>
+        </div>
+
+    </div>
+
+    <script src="{% static 'game/js/input.js' %}"></script>
+    <script src="{% static 'game/js/level.js' %}"></script>
+    <script src="{% static 'game/js/entities.js' %}"></script>
+    <script src="{% static 'game/js/camera.js' %}"></script>
+    <script src="{% static 'game/js/renderer.js' %}"></script>
+    <script src="{% static 'game/js/main.js' %}"></script>
+</body>
+</html>
