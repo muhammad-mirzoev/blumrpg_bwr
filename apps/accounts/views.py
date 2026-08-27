@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 
+from apps.characters.serializers import CharacterSerializer
+
 
 class CsrfView(APIView):
     """
@@ -67,9 +69,10 @@ class ProfileView(APIView):
     """
     GET /api/auth/me/
     Возвращает данные текущего залогиненного пользователя.
-    Персонажа (Character) сюда добавим позже — на этапе apps/characters.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        data = UserSerializer(request.user).data
+        data['character'] = CharacterSerializer(request.user.character).data
+        return Response(data)
