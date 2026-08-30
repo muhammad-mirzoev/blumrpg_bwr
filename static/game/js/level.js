@@ -29,4 +29,12 @@ const TEST_LEVEL = {
         { x: 1700, y: 320, width: 120, height: 20 },
         { x: 1900, y: 420, width: 160, height: 20 },
     ],
+
+    enemies: [
+        // Слизень на платформе x:620-920 (y=500 -> стоит на земле, y=480 верх слизня)
+        { type: 'slime', x: 650, y: 480, patrolMinX: 630, patrolMaxX: 892 },
+
+        // Второй слизень на длинном участке земли справа
+        { type: 'slime', x: 1550, y: 480, patrolMinX: 1360, patrolMaxX: 2380 },
+    ],
 };

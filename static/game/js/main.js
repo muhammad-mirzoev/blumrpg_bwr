@@ -1,6 +1,6 @@
 /**
  * Точка входа. Инициализирует игру, подтягивает данные персонажа
- * с бэкенда (GET /api/character/) и запускает game loop.
+ * с бэкенда и запускает game loop.
  */
 (function () {
     const canvas = document.getElementById('game-canvas');
@@ -12,7 +12,17 @@
     const camera = new Camera(canvas.width, canvas.height);
     const renderer = new Renderer(ctx, canvas.width, canvas.height);
 
-    // Состояния игровой сцены. 'dead' блокирует физику до нажатия Restart.
+    let enemies = spawnEnemies(level);
+    let floatingTexts = [];
+
+    // Награды, заработанные за этот забег. Не пишутся в БД напрямую - в данном коммите
+    let runXp = 0;
+    let runGold = 0;
+
+    // Чтобы не бить одного и того же врага несколько раз за один взмах атаки.
+    let hitEnemiesThisSwing = new Set();
+    let attackWasActive = false;
+
     const GameState = { PLAYING: 'playing', PAUSED: 'paused', DEAD: 'dead' };
     let state = GameState.PLAYING;
 
@@ -20,8 +30,25 @@
     const pauseOverlay = document.getElementById('pause-overlay');
     const deathOverlay = document.getElementById('death-overlay');
     const btnRestart = document.getElementById('btn-restart');
+    const hudSession = document.getElementById('hud-session');
 
-    // --- Загрузка данных персонажа с backend ---
+    function spawnEnemies(level) {
+        return level.enemies.map((cfg) => {
+            switch (cfg.type) {
+                case 'slime':
+                    return new Slime(cfg);
+                default:
+                    console.warn(`Неизвестный тип врага: ${cfg.type}`);
+                    return null;
+            }
+        }).filter(Boolean);
+    }
+
+    function spawnFloatingText(text, x, y, color) {
+        floatingTexts.push({ text, x, y, color, life: 40, maxLife: 40 });
+    }
+
+    // Загрузка данных персонажа с backend
     async function loadCharacter() {
         try {
             const response = await fetch('/api/character/', {
@@ -33,7 +60,12 @@
             }
 
             const character = await response.json();
-            updateHud(character);
+
+            player.maxHealth = character.max_health;
+            player.health = character.health;
+            player.strength = character.strength;
+
+            updateHudStaticFields(character);
         } catch (err) {
             console.error('Не удалось загрузить персонажа:', err);
             document.getElementById('hud-char-name').textContent = 'Гость (offline)';
@@ -42,14 +74,9 @@
         }
     }
 
-    function updateHud(character) {
+    function updateHudStaticFields(character) {
         document.getElementById('hud-char-name').textContent = character.name;
         document.getElementById('hud-level').textContent = `LVL ${character.level}`;
-
-        const hpPercent = (character.health / character.max_health) * 100;
-        document.getElementById('hp-fill').style.width = `${hpPercent}%`;
-        document.getElementById('hp-value').textContent =
-            `${character.health}/${character.max_health}`;
 
         const xpPercent = (character.experience / character.experience_to_next_level) * 100;
         document.getElementById('xp-fill').style.width = `${xpPercent}%`;
@@ -57,15 +84,26 @@
         document.getElementById('gold-value').textContent = character.gold;
     }
 
-    // --- Пауза ---
+    function updateHudHealth() {
+        const hpPercent = (player.health / player.maxHealth) * 100;
+        document.getElementById('hp-fill').style.width = `${Math.max(0, hpPercent)}%`;
+        document.getElementById('hp-value').textContent =
+            `${player.health}/${player.maxHealth}`;
+    }
+
+    function updateHudSession() {
+        hudSession.textContent = `+${runXp} XP · +${runGold} Gold`;
+    }
+
+    // Пауза
     function togglePause() {
-        if (state === GameState.DEAD) return; // на экране смерти пауза недоступна
+        if (state === GameState.DEAD) return;
 
         state = state === GameState.PAUSED ? GameState.PLAYING : GameState.PAUSED;
         pauseOverlay.classList.toggle('hidden', state !== GameState.PAUSED);
     }
 
-    // --- Смерть / Рестарт ---
+    // Смерть / Рестарт
     function triggerDeath() {
         state = GameState.DEAD;
         deathOverlay.classList.remove('hidden');
@@ -73,13 +111,75 @@
 
     function restartLevel() {
         player.respawn(level);
+        enemies = spawnEnemies(level);
+        floatingTexts = [];
+        hitEnemiesThisSwing = new Set();
+        attackWasActive = false;
+
+        // Заработанные за забег награды тоже сбрасываются - начинаем уровень заново.
+        runXp = 0;
+        runGold = 0;
+        updateHudSession();
+
         deathOverlay.classList.add('hidden');
         state = GameState.PLAYING;
     }
 
     btnRestart.addEventListener('click', restartLevel);
 
-    // --- Game loop ---
+    // Контактный урон от врагов игроку
+    function handleEnemyContact() {
+        for (const enemy of enemies) {
+            if (enemy.isDead) continue;
+            if (!rectsIntersect(player.rect, enemy.rect)) continue;
+            player.takeDamage(enemy.damage);
+        }
+    }
+
+    // Атака игрока по врагам
+    function handlePlayerAttack() {
+        const hitbox = player.getAttackHitbox();
+
+        // Новый взмах атаки начался - очищаем список уже поражённых врагов.
+        if (hitbox && !attackWasActive) {
+            hitEnemiesThisSwing = new Set();
+        }
+        attackWasActive = !!hitbox;
+
+        if (!hitbox) return;
+
+        for (const enemy of enemies) {
+            if (enemy.isDead || hitEnemiesThisSwing.has(enemy)) continue;
+            if (!rectsIntersect(hitbox, enemy.rect)) continue;
+
+            hitEnemiesThisSwing.add(enemy);
+
+            const damage = computeDamage(player.strength, enemy.defense);
+            enemy.takeDamage(damage);
+
+            spawnFloatingText(`-${damage}`, enemy.x + enemy.width / 2, enemy.y - 4, '#ffffff');
+
+            if (enemy.isDead) {
+                runXp += enemy.xpReward;
+                runGold += enemy.goldReward;
+
+                spawnFloatingText(`+${enemy.xpReward} XP`, enemy.x + enemy.width / 2, enemy.y - 20, '#7c5cbf');
+                spawnFloatingText(`+${enemy.goldReward} Gold`, enemy.x + enemy.width / 2, enemy.y - 36, '#e0a53c');
+
+                updateHudSession();
+            }
+        }
+    }
+
+    function updateFloatingTexts() {
+        for (const ft of floatingTexts) {
+            ft.y -= 0.6;
+            ft.life -= 1;
+        }
+        floatingTexts = floatingTexts.filter((ft) => ft.life > 0);
+    }
+
+    // Game loop
     function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop);
 
@@ -90,21 +190,27 @@
         if (state === GameState.PLAYING) {
             player.update(input, level);
 
-            if (player.hasFallenIntoVoid(level)) {
-                triggerDeath();
+            for (const enemy of enemies) {
+                enemy.update(level);
             }
 
-            camera.follow(player, level);
+            handlePlayerAttack();
+            handleEnemyContact();
+            updateFloatingTexts();
+
+            if (player.hasFallenIntoVoid(level) || !player.isAlive) {
+                triggerDeath();
+            }
         }
 
-        // Рендерим сцену всегда (кроме случая, когда ещё грузится персонаж),
-        // даже во время паузы/смерти — чтобы сцена оставалась видна под overlay.
         camera.follow(player, level);
-        renderer.render(level, player, camera);
+        renderer.render(level, player, camera, enemies, floatingTexts);
+        updateHudHealth();
 
         input.clearFrame();
     }
 
+    updateHudSession();
     loadCharacter();
     requestAnimationFrame(gameLoop);
 })();
