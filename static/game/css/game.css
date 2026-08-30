@@ -136,6 +136,14 @@ body {
     font-size: 18px;
 }
 
+/* --- Session rewards (заработано за текущий забег уровня) --- */
+.hud-session {
+    font-size: 14px;
+    color: var(--accent-gold);
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
 /* --- Canvas frame --- */
 #canvas-frame {
     position: relative;
