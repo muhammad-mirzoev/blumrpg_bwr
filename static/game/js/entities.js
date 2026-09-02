@@ -12,33 +12,34 @@ class Player {
         this.vy = 0;
 
         this.onGround = false;
-        this.facing = 1; // 1 = вправо, -1 = влево
+        this.facing = 1;
 
-        // Физические константы
         this.MOVE_SPEED = 4.2;
         this.JUMP_FORCE = -13;
         this.GRAVITY = 0.65;
         this.MAX_FALL_SPEED = 16;
         this.FRICTION = 0.8;
 
-        // HP
-        // Реальные значения подставляются в main.js после загрузки
-        // персонажа с backend.
         this.maxHealth = 100;
         this.health = 100;
 
         this.INVULNERABILITY_FRAMES = 60;
         this.invulnerableTimer = 0;
 
-        // Боевые характеристики
-        // strength тоже подтягивается с backend в main.js. Значение по
         this.strength = 10;
 
-        // Атака
-        this.ATTACK_ACTIVE_FRAMES = 10;   // сколько кадров хитбокс реально бьёт
-        this.ATTACK_COOLDOWN_FRAMES = 28; // сколько кадров ждать до следующей атаки
+        this.ATTACK_ACTIVE_FRAMES = 10;
+        this.ATTACK_COOLDOWN_FRAMES = 28;
         this.attackTimer = 0;
         this.attackCooldown = 0;
+
+        // Кратковременная потеря контроля после удара шипами/врагом с knockback.
+        this.knockbackTimer = 0;
+
+        // Платформа, на которой сейчас стоит игрок (или null). Нужна,
+        // чтобы двигать игрока вместе с движущейся платформой — иначе
+        // он будет соскальзывать назад, пока платформа едет вперёд.
+        this.standingOn = null;
     }
 
     get rect() {
@@ -53,24 +54,32 @@ class Player {
         return this.attackTimer > 0;
     }
 
-    update(input, level) {
-        this._handleHorizontalInput(input);
+    update(input, level, movingPlatforms, fallingPlatforms) {
+        // Если стоим на движущейся платформе - переносимся вместе с ней
+        // ДО обработки собственного ввода, чтобы это не "съедало" прыжок игрока.
+        if (this.standingOn) {
+            this.x += this.standingOn.deltaX;
+        }
+        this.standingOn = null;
+
+        if (this.knockbackTimer > 0) {
+            this.knockbackTimer -= 1;
+        } else {
+            this._handleHorizontalInput(input);
+        }
+
         this._handleJump(input);
         this._handleAttack(input);
         this._applyGravity();
 
-        this._moveAndCollideX(level);
-        this._moveAndCollideY(level);
+        this._moveAndCollideX(level.platforms);
+        this._moveAndCollideYCombined(level.platforms, movingPlatforms, fallingPlatforms);
 
         if (this.invulnerableTimer > 0) {
             this.invulnerableTimer -= 1;
         }
     }
 
-    /**
-     * Возвращает прямоугольник хитбокса атаки перед персонажем,
-     * либо null, если атака сейчас не активна.
-     */
     getAttackHitbox() {
         if (this.attackTimer <= 0) return null;
 
@@ -90,6 +99,22 @@ class Player {
         return true;
     }
 
+    /**
+     * Урон с отбрасыванием (шипы, некоторые враги в будущем).
+     * direction: -1 или 1 - куда отбросить игрока по горизонтали.
+     */
+    takeDamageWithKnockback(amount, direction) {
+        const applied = this.takeDamage(amount);
+        if (applied) {
+            // Сила уменьшена по сравнению с первой версией — раньше
+            // отбрасывание могло утащить игрока прямо в соседнюю пропасть.
+            this.vx = 4 * direction;
+            this.vy = -5;
+            this.knockbackTimer = 10;
+        }
+        return applied;
+    }
+
     hasFallenIntoVoid(level) {
         return this.y > level.deathZoneY;
     }
@@ -104,6 +129,8 @@ class Player {
         this.invulnerableTimer = 0;
         this.attackTimer = 0;
         this.attackCooldown = 0;
+        this.knockbackTimer = 0;
+        this.standingOn = null;
     }
 
     _handleHorizontalInput(input) {
@@ -143,10 +170,10 @@ class Player {
         }
     }
 
-    _moveAndCollideX(level) {
+    _moveAndCollideX(staticPlatforms) {
         this.x += this.vx;
 
-        for (const platform of level.platforms) {
+        for (const platform of staticPlatforms) {
             if (!rectsIntersect(this.rect, platform)) continue;
 
             if (this.vx > 0) {
@@ -157,33 +184,52 @@ class Player {
             this.vx = 0;
         }
 
-        if (this.x < 0) this.x = 0;
-        if (this.x + this.width > level.width) this.x = level.width - this.width;
+        // Границы уровня знает только main.js, поэтому здесь не клампим -
+        // это делает вызывающий код (main.js) после update(), как и раньше.
     }
 
-    _moveAndCollideY(level) {
+    /**
+     * Вертикальные коллизии со всеми видами "полов" сразу: обычные
+     * статичные платформы, движущиеся и осыпающиеся. Логика приземления
+     * одинаковая для всех трёх - различие только в том, что происходит
+     * ПОСЛЕ приземления (запоминаем standingOn / триггерим осыпание).
+     */
+    _moveAndCollideYCombined(staticPlatforms, movingPlatforms, fallingPlatforms) {
         this.y += this.vy;
         this.onGround = false;
 
-        for (const platform of level.platforms) {
+        const allSolids = [
+            ...staticPlatforms,
+            ...movingPlatforms,
+            ...fallingPlatforms.filter((p) => !p.isCollapsed),
+        ];
+
+        for (const platform of allSolids) {
             if (!rectsIntersect(this.rect, platform)) continue;
 
             if (this.vy > 0) {
                 this.y = platform.y - this.height;
                 this.onGround = true;
+                this.vy = 0;
+
+                if (platform.axis) {
+                    // Это движущаяся платформа - запоминаем, чтобы в следующем
+                    // кадре перенести игрока вместе с ней.
+                    this.standingOn = platform;
+                } else if (platform.triggerCollapse) {
+                    // Это осыпающаяся платформа - запускаем таймер обрушения.
+                    platform.triggerCollapse();
+                }
             } else if (this.vy < 0) {
                 this.y = platform.y + platform.height;
+                this.vy = 0;
             }
-            this.vy = 0;
         }
     }
 }
 
 
-/**
- * Базовый класс врага. Конкретные типы (Slime, Goblin, Bat, ...)
- * наследуются от него.
- */
+/** Базовый класс врага. */
 class Enemy {
     constructor({ x, y, width, height, health, damage, defense, speed, xpReward, goldReward }) {
         this.x = x;
@@ -203,7 +249,6 @@ class Enemy {
 
         this.isDead = false;
 
-        // Кратковременная белая вспышка при получении урона.
         this.HIT_FLASH_FRAMES = 8;
         this.hitFlashTimer = 0;
     }
@@ -212,7 +257,6 @@ class Enemy {
         return { x: this.x, y: this.y, width: this.width, height: this.height };
     }
 
-    /** Базовое обновление - тикает таймер вспышки. */
     update(level) {
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= 1;
@@ -232,10 +276,7 @@ class Enemy {
 }
 
 
-/**
- * Slime - медленный базовый враг.
- * Патрулирует между двумя точками, наносит контактный урон.
- */
+/** Slime - медленный базовый враг*/
 class Slime extends Enemy {
     constructor({ x, y, patrolMinX, patrolMaxX }) {
         super({
@@ -274,7 +315,154 @@ class Slime extends Enemy {
 }
 
 
-/** Простая проверка пересечения двух прямоугольников (AABB). Общая утилита. */
+/**
+ * Shipы - статичная ловушка. Не двигается, наносит сильный урон
+ * с отбрасыванием при контакте. Есть небольшой кулдаун урона на
+ * саму ловушку (иначе стоя на шипах игрок терял бы HP каждый кадр
+ * ещё и поверх i-frames - это уже избыточно жестоко).
+ */
+class Spike {
+    constructor({ x, y, width, height }) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.damage = 15;
+    }
+
+    get rect() {
+        return { x: this.x, y: this.y, width: this.width, height: this.height };
+    }
+}
+
+
+/**
+ * Движущаяся платформа. Едет туда-обратно вдоль одной оси между
+ * rangeMin и rangeMax. deltaX/deltaY - на сколько она сдвинулась
+ * именно в ЭТОМ кадре (нужно игроку, чтобы двигаться вместе с ней).
+ */
+class MovingPlatform {
+    constructor({ x, y, width, height, axis, rangeMin, rangeMax, speed }) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.axis = axis; // 'x' или 'y'
+        this.rangeMin = rangeMin;
+        this.rangeMax = rangeMax;
+        this.speed = speed;
+        this.direction = 1;
+
+        this.deltaX = 0;
+        this.deltaY = 0;
+    }
+
+    get rect() {
+        return { x: this.x, y: this.y, width: this.width, height: this.height };
+    }
+
+    update() {
+        const move = this.speed * this.direction;
+
+        if (this.axis === 'x') {
+            this.x += move;
+            this.deltaX = move;
+            this.deltaY = 0;
+
+            if (this.x <= this.rangeMin) {
+                this.x = this.rangeMin;
+                this.direction = 1;
+            } else if (this.x >= this.rangeMax) {
+                this.x = this.rangeMax;
+                this.direction = -1;
+            }
+        } else {
+            this.y += move;
+            this.deltaY = move;
+            this.deltaX = 0;
+
+            if (this.y <= this.rangeMin) {
+                this.y = this.rangeMin;
+                this.direction = 1;
+            } else if (this.y >= this.rangeMax) {
+                this.y = this.rangeMax;
+                this.direction = -1;
+            }
+        }
+    }
+}
+
+
+/**
+ * Осыпающаяся платформа. Снаружи выглядит как обычная (с мелким отличием
+ * в текстуре - см. renderer.js), но через WARNING_DELAY кадров после того,
+ * как игрок на неё встал, она рушится (перестаёт быть твёрдой и падает
+ * вниз анимацией), а через RESPAWN_DELAY - восстанавливается на исходном месте.
+ */
+class FallingPlatform {
+    constructor({ x, y, width, height }) {
+        this.originX = x;
+        this.originY = y;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+
+        this.WARNING_DELAY = 30;   // ~0.5 сек дрожания перед обрушением
+        this.FALL_DURATION = 25;   // сколько кадров длится анимация падения
+        this.RESPAWN_DELAY = 90;   // ~1.5 сек до восстановления
+
+        this.state = 'idle'; // idle -> warning -> falling -> collapsed -> idle
+        this.timer = 0;
+    }
+
+    get rect() {
+        return { x: this.x, y: this.y, width: this.width, height: this.height };
+    }
+
+    get isCollapsed() {
+        return this.state === 'falling' || this.state === 'collapsed';
+    }
+
+    /** Вызывается игроком в момент приземления на платформу. */
+    triggerCollapse() {
+        if (this.state === 'idle') {
+            this.state = 'warning';
+            this.timer = this.WARNING_DELAY;
+        }
+    }
+
+    update() {
+        if (this.state === 'warning') {
+            this.timer -= 1;
+            if (this.timer <= 0) {
+                this.state = 'falling';
+                this.timer = this.FALL_DURATION;
+            }
+        } else if (this.state === 'falling') {
+            this.y += 6; // платформа физически падает вниз с экрана
+            this.timer -= 1;
+            if (this.timer <= 0) {
+                this.state = 'collapsed';
+                this.timer = this.RESPAWN_DELAY;
+            }
+        } else if (this.state === 'collapsed') {
+            this.timer -= 1;
+            if (this.timer <= 0) {
+                this.state = 'idle';
+                this.x = this.originX;
+                this.y = this.originY;
+            }
+        }
+    }
+
+    // Метод-геттер под общий интерфейс "у платформы, которая рушится, есть triggerCollapse"
+    get triggerCollapseRef() {
+        return this.triggerCollapse.bind(this);
+    }
+}
+
+
 function rectsIntersect(a, b) {
     return (
         a.x < b.x + b.width &&
@@ -284,11 +472,6 @@ function rectsIntersect(a, b) {
     );
 }
 
-/**
- * Формула damage = strength - defense, минимум 1.
- * Это ТОЛЬКО клиентское превью - авторитетный расчёт (и защита от читов)
- * остаётся на backend.
- */
 function computeDamage(attackerStrength, targetDefense) {
     return Math.max(attackerStrength - targetDefense, 1);
 }

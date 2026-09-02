@@ -1,6 +1,5 @@
 /**
  * Точка входа. Инициализирует игру, подтягивает данные персонажа
- * с бэкенда и запускает game loop.
  */
 (function () {
     const canvas = document.getElementById('game-canvas');
@@ -13,13 +12,13 @@
     const renderer = new Renderer(ctx, canvas.width, canvas.height);
 
     let enemies = spawnEnemies(level);
+    let movingPlatforms = spawnMovingPlatforms(level);
+    let fallingPlatforms = spawnFallingPlatforms(level);
     let floatingTexts = [];
 
-    // Награды, заработанные за этот забег. Не пишутся в БД напрямую - в данном коммите
     let runXp = 0;
     let runGold = 0;
 
-    // Чтобы не бить одного и того же врага несколько раз за один взмах атаки.
     let hitEnemiesThisSwing = new Set();
     let attackWasActive = false;
 
@@ -42,6 +41,14 @@
                     return null;
             }
         }).filter(Boolean);
+    }
+
+    function spawnMovingPlatforms(level) {
+        return level.movingPlatforms.map((cfg) => new MovingPlatform(cfg));
+    }
+
+    function spawnFallingPlatforms(level) {
+        return level.fallingPlatforms.map((cfg) => new FallingPlatform(cfg));
     }
 
     function spawnFloatingText(text, x, y, color) {
@@ -95,7 +102,6 @@
         hudSession.textContent = `+${runXp} XP · +${runGold} Gold`;
     }
 
-    // Пауза
     function togglePause() {
         if (state === GameState.DEAD) return;
 
@@ -103,7 +109,6 @@
         pauseOverlay.classList.toggle('hidden', state !== GameState.PAUSED);
     }
 
-    // Смерть / Рестарт
     function triggerDeath() {
         state = GameState.DEAD;
         deathOverlay.classList.remove('hidden');
@@ -112,11 +117,12 @@
     function restartLevel() {
         player.respawn(level);
         enemies = spawnEnemies(level);
+        movingPlatforms = spawnMovingPlatforms(level);
+        fallingPlatforms = spawnFallingPlatforms(level);
         floatingTexts = [];
         hitEnemiesThisSwing = new Set();
         attackWasActive = false;
 
-        // Заработанные за забег награды тоже сбрасываются - начинаем уровень заново.
         runXp = 0;
         runGold = 0;
         updateHudSession();
@@ -127,7 +133,6 @@
 
     btnRestart.addEventListener('click', restartLevel);
 
-    // Контактный урон от врагов игроку
     function handleEnemyContact() {
         for (const enemy of enemies) {
             if (enemy.isDead) continue;
@@ -136,11 +141,23 @@
         }
     }
 
-    // Атака игрока по врагам
+    /** Урон от шипов - с отбрасыванием в сторону, противоположную стороне подхода игрока. */
+    function handleTrapContact() {
+        for (const trap of level.traps) {
+            if (trap.type !== 'spikes') continue;
+            if (!rectsIntersect(player.rect, trap)) continue;
+
+            const playerCenterX = player.x + player.width / 2;
+            const trapCenterX = trap.x + trap.width / 2;
+            const knockDirection = playerCenterX < trapCenterX ? -1 : 1;
+
+            player.takeDamageWithKnockback(trap.damage, knockDirection);
+        }
+    }
+
     function handlePlayerAttack() {
         const hitbox = player.getAttackHitbox();
 
-        // Новый взмах атаки начался - очищаем список уже поражённых врагов.
         if (hitbox && !attackWasActive) {
             hitEnemiesThisSwing = new Set();
         }
@@ -179,7 +196,6 @@
         floatingTexts = floatingTexts.filter((ft) => ft.life > 0);
     }
 
-    // Game loop
     function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop);
 
@@ -188,7 +204,15 @@
         }
 
         if (state === GameState.PLAYING) {
-            player.update(input, level);
+            for (const mp of movingPlatforms) mp.update();
+            for (const fp of fallingPlatforms) fp.update();
+
+            player.update(input, level, movingPlatforms, fallingPlatforms);
+
+            // Границы уровня по X (раньше это делал сам Player, теперь -
+            // после того, как учтено движение вместе с платформой).
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > level.width) player.x = level.width - player.width;
 
             for (const enemy of enemies) {
                 enemy.update(level);
@@ -196,6 +220,7 @@
 
             handlePlayerAttack();
             handleEnemyContact();
+            handleTrapContact();
             updateFloatingTexts();
 
             if (player.hasFallenIntoVoid(level) || !player.isAlive) {
@@ -204,7 +229,7 @@
         }
 
         camera.follow(player, level);
-        renderer.render(level, player, camera, enemies, floatingTexts);
+        renderer.render(level, player, camera, enemies, floatingTexts, movingPlatforms, fallingPlatforms);
         updateHudHealth();
 
         input.clearFrame();
