@@ -20,6 +20,7 @@ class Renderer {
         this._drawMovingPlatforms(movingPlatforms);
         this._drawFallingPlatforms(fallingPlatforms);
         this._drawTraps(level);
+        this._drawExit(level);
         this._drawEnemies(enemies);
         this._drawAttackHitbox(player);
         this._drawPlayer(player);
@@ -124,6 +125,27 @@ class Renderer {
                 ctx.fill();
             }
         }
+    }
+
+    _drawExit(level) {
+        if (!level.exit) return;
+
+        const ctx = this.ctx;
+        const e = level.exit;
+
+        ctx.save();
+
+        // Лёгкое свечение - дверь должна читаться издалека как цель уровня.
+        ctx.shadowColor = '#e0a53c';
+        ctx.shadowBlur = 14;
+
+        ctx.fillStyle = '#3a3a4a';
+        ctx.fillRect(e.x, e.y, e.width, e.height);
+
+        ctx.fillStyle = '#e0a53c';
+        ctx.fillRect(e.x + 4, e.y + 4, e.width - 8, e.height - 8);
+
+        ctx.restore();
     }
 
     _drawEnemies(enemies) {
