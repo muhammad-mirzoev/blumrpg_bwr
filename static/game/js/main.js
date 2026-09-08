@@ -1,19 +1,23 @@
 /**
- * Точка входа. Инициализирует игру, подтягивает данные персонажа
+ * Точка входа. Загружает персонажа и данные уровня с backend
+ * (вместо захардкоженного TEST_LEVEL), запускает game loop,
+ * отправляет результат прохождения через POST /api/levels/<id>/complete/.
  */
 (function () {
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
+    const container = document.getElementById('game-container');
+    const levelId = container.dataset.levelId;
 
     const input = new InputManager();
-    const level = TEST_LEVEL;
-    const player = new Player(level.spawn.x, level.spawn.y);
     const camera = new Camera(canvas.width, canvas.height);
     const renderer = new Renderer(ctx, canvas.width, canvas.height);
 
-    let enemies = spawnEnemies(level);
-    let movingPlatforms = spawnMovingPlatforms(level);
-    let fallingPlatforms = spawnFallingPlatforms(level);
+    let level = null;
+    let player = null;
+    let enemies = [];
+    let movingPlatforms = [];
+    let fallingPlatforms = [];
     let floatingTexts = [];
 
     let runXp = 0;
@@ -22,14 +26,28 @@
     let hitEnemiesThisSwing = new Set();
     let attackWasActive = false;
 
-    const GameState = { PLAYING: 'playing', PAUSED: 'paused', DEAD: 'dead' };
-    let state = GameState.PLAYING;
+    const GameState = {
+        LOADING: 'loading', PLAYING: 'playing',
+        PAUSED: 'paused', DEAD: 'dead', COMPLETE: 'complete',
+    };
+    let state = GameState.LOADING;
 
     const loadingOverlay = document.getElementById('loading-overlay');
     const pauseOverlay = document.getElementById('pause-overlay');
     const deathOverlay = document.getElementById('death-overlay');
-    const btnRestart = document.getElementById('btn-restart');
+    const completeOverlay = document.getElementById('complete-overlay');
+    const completeRewardsEl = document.getElementById('complete-rewards');
     const hudSession = document.getElementById('hud-session');
+    const levelTitleEl = document.getElementById('level-title');
+
+    document.getElementById('btn-restart').addEventListener('click', restartLevel);
+    document.getElementById('btn-exit').addEventListener('click', goToSelect);
+    document.getElementById('btn-complete-restart').addEventListener('click', restartLevel);
+    document.getElementById('btn-complete-exit').addEventListener('click', goToSelect);
+
+    function goToSelect() {
+        window.location.href = '/game/select/';
+    }
 
     function spawnEnemies(level) {
         return level.enemies.map((cfg) => {
@@ -55,29 +73,62 @@
         floatingTexts.push({ text, x, y, color, life: 40, maxLife: 40 });
     }
 
-    // Загрузка данных персонажа с backend
-    async function loadCharacter() {
-        try {
-            const response = await fetch('/api/character/', {
-                credentials: 'same-origin',
-            });
+    function getCsrfToken() {
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : '';
+    }
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+    async function ensureCsrfCookie() {
+        if (!document.cookie.includes('csrftoken=')) {
+            await fetch('/api/auth/csrf/', { credentials: 'same-origin' });
+        }
+    }
+
+    // Загрузка персонажа + уровня с backend
+    async function loadCharacterAndLevel() {
+        try {
+            await ensureCsrfCookie();
+
+            const [charResponse, levelResponse] = await Promise.all([
+                fetch('/api/character/', { credentials: 'same-origin' }),
+                fetch(`/api/levels/${levelId}/`, { credentials: 'same-origin' }),
+            ]);
+
+            if (!charResponse.ok) {
+                throw new Error(`Character HTTP ${charResponse.status}`);
             }
 
-            const character = await response.json();
+            if (!levelResponse.ok) {
+                const msg = levelResponse.status === 403
+                    ? 'Этот уровень ещё не разблокирован.'
+                    : 'Не удалось загрузить уровень.';
+                alert(msg);
+                goToSelect();
+                return;
+            }
 
+            const character = await charResponse.json();
+            const levelData = await levelResponse.json();
+
+            level = levelData.map_data;
+            player = new Player(level.spawn.x, level.spawn.y);
             player.maxHealth = character.max_health;
             player.health = character.health;
             player.strength = character.strength;
 
+            enemies = spawnEnemies(level);
+            movingPlatforms = spawnMovingPlatforms(level);
+            fallingPlatforms = spawnFallingPlatforms(level);
+
             updateHudStaticFields(character);
-        } catch (err) {
-            console.error('Не удалось загрузить персонажа:', err);
-            document.getElementById('hud-char-name').textContent = 'Гость (offline)';
-        } finally {
+            levelTitleEl.textContent = levelData.name;
+
+            state = GameState.PLAYING;
             loadingOverlay.classList.add('hidden');
+        } catch (err) {
+            console.error('Ошибка загрузки:', err);
+            alert('Не удалось загрузить игру.');
+            goToSelect();
         }
     }
 
@@ -103,7 +154,7 @@
     }
 
     function togglePause() {
-        if (state === GameState.DEAD) return;
+        if (state !== GameState.PLAYING && state !== GameState.PAUSED) return;
 
         state = state === GameState.PAUSED ? GameState.PLAYING : GameState.PAUSED;
         pauseOverlay.classList.toggle('hidden', state !== GameState.PAUSED);
@@ -128,10 +179,50 @@
         updateHudSession();
 
         deathOverlay.classList.add('hidden');
+        completeOverlay.classList.add('hidden');
         state = GameState.PLAYING;
     }
 
-    btnRestart.addEventListener('click', restartLevel);
+    // Завершение уровня: игрок дошёл до двери
+    async function handleLevelComplete() {
+        if (!level.exit) return;
+        if (!rectsIntersect(player.rect, level.exit)) return;
+
+        state = GameState.LOADING; // блокируем управление на время запроса
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.querySelector('span').textContent = 'Сохраняем прогресс...';
+
+        try {
+            const response = await fetch(`/api/levels/${levelId}/complete/`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                },
+                body: JSON.stringify({ xp_earned: runXp, gold_earned: runGold }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            completeRewardsEl.textContent =
+                `+${result.xp_awarded} XP · +${result.gold_awarded} Gold` +
+                (result.levels_gained.length > 0 ? ` · Level Up! (Lv.${result.character_level})` : '');
+
+            loadingOverlay.classList.add('hidden');
+            completeOverlay.classList.remove('hidden');
+            state = GameState.COMPLETE;
+        } catch (err) {
+            console.error('Не удалось сохранить прогресс:', err);
+            alert('Не удалось сохранить прогресс. Проверь соединение и попробуй снова.');
+            loadingOverlay.classList.add('hidden');
+            state = GameState.PLAYING; // даём попробовать дойти до двери ещё раз
+        }
+    }
 
     function handleEnemyContact() {
         for (const enemy of enemies) {
@@ -141,7 +232,6 @@
         }
     }
 
-    /** Урон от шипов - с отбрасыванием в сторону, противоположную стороне подхода игрока. */
     function handleTrapContact() {
         for (const trap of level.traps) {
             if (trap.type !== 'spikes') continue;
@@ -199,6 +289,10 @@
     function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop);
 
+        if (state === GameState.LOADING || !level || !player) {
+            return; // ещё грузимся - рендерить нечего
+        }
+
         if (input.wasJustPressed('pause')) {
             togglePause();
         }
@@ -209,8 +303,6 @@
 
             player.update(input, level, movingPlatforms, fallingPlatforms);
 
-            // Границы уровня по X (раньше это делал сам Player, теперь -
-            // после того, как учтено движение вместе с платформой).
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > level.width) player.x = level.width - player.width;
 
@@ -222,6 +314,7 @@
             handleEnemyContact();
             handleTrapContact();
             updateFloatingTexts();
+            handleLevelComplete(); // асинхронная - сама переключит state при успехе
 
             if (player.hasFallenIntoVoid(level) || !player.isAlive) {
                 triggerDeath();
@@ -236,6 +329,6 @@
     }
 
     updateHudSession();
-    loadCharacter();
+    loadCharacterAndLevel();
     requestAnimationFrame(gameLoop);
 })();
