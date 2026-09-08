@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark Realm - BlumJ</title>
+    <title>Dark Realm — Play</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 </head>
 <body>
 
-    <div id="game-container">
+    <div id="game-container" data-level-id="{{ level_id }}">
 
         <!-- HUD -->
         <div id="hud">
@@ -46,11 +46,12 @@
 
         <!-- Canvas -->
         <div id="canvas-frame">
+            <span id="level-title"></span>
             <canvas id="game-canvas" width="960" height="540"></canvas>
             <div id="vignette"></div>
 
             <div id="loading-overlay">
-                <span>Загрузка персонажа...</span>
+                <span>Загрузка уровня...</span>
             </div>
 
             <div id="pause-overlay" class="hidden">
@@ -59,15 +60,22 @@
             </div>
 
             <div id="death-overlay" class="hidden">
-                <span class="death-title">ТЫ УМЕР</span>
+                <span class="death-title">YOU DIED</span>
                 <div class="death-buttons">
-                    <button id="btn-restart" class="death-btn">РЕСТАРТ</button>
-                    <button id="btn-exit" class="death-btn death-btn-disabled" disabled
-                            title="Появится в Этапе 9 (Level System)">
-                        Выйти к выбору уровня
-                    </button>
+                    <button id="btn-restart" class="death-btn">Restart</button>
+                    <button id="btn-exit" class="death-btn">Exit to Level Select</button>
                 </div>
             </div>
+
+            <div id="complete-overlay" class="hidden">
+                <span class="complete-title">LEVEL COMPLETE</span>
+                <span class="complete-rewards" id="complete-rewards"></span>
+                <div class="death-buttons">
+                    <button id="btn-complete-restart" class="death-btn">Play Again</button>
+                    <button id="btn-complete-exit" class="death-btn">Return to Level Select</button>
+                </div>
+            </div>
+
         </div>
 
         <!-- Controls hint -->
@@ -83,7 +91,6 @@
     </div>
 
     <script src="{% static 'game/js/input.js' %}"></script>
-    <script src="{% static 'game/js/level.js' %}"></script>
     <script src="{% static 'game/js/entities.js' %}"></script>
     <script src="{% static 'game/js/camera.js' %}"></script>
     <script src="{% static 'game/js/renderer.js' %}"></script>
