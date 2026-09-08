@@ -274,6 +274,146 @@ body {
     cursor: not-allowed;
 }
 
+/* --- Level title над канвасом --- */
+#level-title {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-pixel);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* --- Complete overlay --- */
+#complete-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 16, 12, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+}
+
+.complete-title {
+    font-family: var(--font-pixel);
+    font-size: 24px;
+    color: var(--accent-gold);
+    letter-spacing: 4px;
+    text-shadow: 0 0 14px rgba(224, 165, 60, 0.6);
+}
+
+.complete-rewards {
+    font-size: 20px;
+    color: var(--text-bone);
+}
+
+/* --- Level select page --- */
+#select-container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+#select-title {
+    font-family: var(--font-pixel);
+    font-size: 18px;
+    color: var(--accent-gold);
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+}
+
+#level-grid-loading {
+    color: var(--text-dim);
+    font-size: 18px;
+}
+
+#level-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.level-card {
+    position: relative;
+    display: block;
+    background: var(--bg-panel);
+    border: 3px solid var(--border-iron);
+    border-radius: 4px;
+    padding: 16px;
+    text-decoration: none;
+    color: var(--text-bone);
+    transition: border-color 0.15s, transform 0.1s;
+    cursor: pointer;
+}
+
+.level-card:hover {
+    border-color: var(--accent-gold);
+    transform: translateY(-2px);
+}
+
+.level-card-locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.level-card-locked:hover {
+    border-color: var(--border-iron);
+    transform: none;
+}
+
+.level-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.level-card-world {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+
+.level-card-badge {
+    font-size: 13px;
+    color: var(--accent-arcane);
+}
+
+.level-card-name {
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: var(--accent-gold);
+}
+
+.level-card-desc {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    min-height: 40px;
+}
+
+.level-card-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+.level-card-lock {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 18px;
+}
+
 @media (max-width: 600px) {
     .hud-bar { width: 100px; }
     .hud-left, .hud-right { min-width: unset; }
