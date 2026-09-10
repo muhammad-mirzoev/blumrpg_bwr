@@ -16,119 +16,208 @@
     --font-body: 'VT323', monospace;
 }
 
-* {
+/* =========================
+   RESET
+   ========================= */
+
+*,
+*::before,
+*::after {
     box-sizing: border-box;
+}
+
+html,
+body {
     margin: 0;
     padding: 0;
+    min-height: 100%;
 }
 
 body {
-    background: var(--bg-deep);
-    background-image:
-        radial-gradient(circle at 50% 0%, #23202f 0%, var(--bg-deep) 60%);
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            #23202f 0%,
+            var(--bg-deep) 60%
+        );
+    background-color: var(--bg-deep);
+
     color: var(--text-bone);
     font-family: var(--font-body);
+
     min-height: 100vh;
+    min-height: 100dvh;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     padding: 24px;
 }
+
+/* =========================
+   GAME CONTAINER
+   ========================= */
 
 #game-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
+
     width: 100%;
     max-width: 980px;
+    min-width: 0;
 }
 
-/* --- HUD --- */
+/* =========================
+   HUD
+   ========================= */
+
 #hud {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 20px;
+
+    width: 100%;
+
     background: var(--bg-panel);
     border: 3px solid var(--border-iron);
     border-radius: 4px;
+
     padding: 12px 18px;
-    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6);
+
+    box-shadow:
+        inset 0 0 12px rgba(0, 0, 0, 0.6);
 }
 
-.hud-left, .hud-right {
+.hud-left,
+.hud-right {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-width: 220px;
+
+    min-width: 0;
+}
+
+.hud-left {
+    flex: 1 1 auto;
 }
 
 .hud-right {
+    flex: 0 1 auto;
     align-items: flex-end;
 }
 
 .hud-name {
     font-family: var(--font-pixel);
     font-size: 12px;
+    line-height: 1.4;
+
     color: var(--accent-gold);
     letter-spacing: 1px;
+
+    overflow-wrap: anywhere;
 }
 
 .hud-level {
     font-family: var(--font-pixel);
     font-size: 11px;
+    line-height: 1.4;
+
     color: var(--text-dim);
 }
+
+/* =========================
+   HUD BARS
+   ========================= */
 
 .hud-bar-row {
     display: flex;
     align-items: center;
     gap: 8px;
+
+    min-width: 0;
 }
 
 .hud-label {
-    font-family: var(--font-pixel);
-    font-size: 9px;
     width: 32px;
     flex-shrink: 0;
+
+    font-family: var(--font-pixel);
+    font-size: 9px;
+    line-height: 1;
 }
 
-.hud-label.hp { color: var(--accent-blood); }
-.hud-label.xp { color: var(--accent-arcane); }
-.hud-label.gold { color: var(--accent-gold); }
+.hud-label.hp {
+    color: var(--accent-blood);
+}
+
+.hud-label.xp {
+    color: var(--accent-arcane);
+}
+
+.hud-label.gold {
+    color: var(--accent-gold);
+}
 
 .hud-bar {
     width: 160px;
     height: 14px;
+
+    flex: 0 1 160px;
+    min-width: 40px;
+
     background: #0c0c12;
+
     border: 2px solid var(--border-iron-light);
     border-radius: 2px;
+
     overflow: hidden;
 }
 
 .hud-bar-fill {
     height: 100%;
     width: 100%;
+
     transition: width 0.25s ease-out;
 }
 
 .hp-bar .hud-bar-fill {
-    background: linear-gradient(180deg, #e05a5a, var(--accent-blood));
+    background:
+        linear-gradient(
+            180deg,
+            #e05a5a,
+            var(--accent-blood)
+        );
 }
 
 .xp-bar .hud-bar-fill {
-    background: linear-gradient(180deg, #9a7ae0, var(--accent-arcane));
+    background:
+        linear-gradient(
+            180deg,
+            #9a7ae0,
+            var(--accent-arcane)
+        );
 }
 
 .hud-value {
-    font-size: 16px;
-    color: var(--text-dim);
     min-width: 60px;
+
+    font-size: 16px;
+    line-height: 1;
+
+    color: var(--text-dim);
+
+    white-space: nowrap;
 }
 
 .hud-gold {
     display: flex;
     align-items: center;
     gap: 8px;
+
+    white-space: nowrap;
 }
 
 .hud-gold .hud-value {
@@ -136,99 +225,131 @@ body {
     font-size: 18px;
 }
 
-/* --- Session rewards (заработано за текущий забег уровня) --- */
+/* Session rewards */
+
 .hud-session {
+    margin-top: 2px;
+
     font-size: 14px;
+    line-height: 1.2;
+
     color: var(--accent-gold);
     opacity: 0.75;
-    margin-top: 2px;
 }
 
-/* --- Canvas frame --- */
+/* =========================
+   CANVAS
+   ========================= */
+
 #canvas-frame {
     position: relative;
+
+    width: 100%;
+
     border: 3px solid var(--border-iron);
     border-radius: 4px;
+
     overflow: hidden;
+
     line-height: 0;
+
+    background: #0a0a10;
 }
 
 #game-canvas {
     display: block;
+
     width: 100%;
+    max-width: 100%;
     height: auto;
+
     background: #0a0a10;
+
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 
-/* Факельная виньетка по краям канваса */
+/* =========================
+   CANVAS VIGNETTE
+   ========================= */
+
 #vignette {
     position: absolute;
     inset: 0;
+
+    z-index: 1;
+
     pointer-events: none;
-    box-shadow: inset 0 0 90px 30px rgba(0, 0, 0, 0.75);
-    background: radial-gradient(circle at 50% 50%, rgba(224, 165, 60, 0.05) 0%, rgba(0,0,0,0) 55%);
+
+    box-shadow:
+        inset 0 0 90px 30px rgba(0, 0, 0, 0.75);
+
+    background:
+        radial-gradient(
+            circle at 50% 50%,
+            rgba(224, 165, 60, 0.05) 0%,
+            rgba(0, 0, 0, 0) 55%
+        );
+
     animation: torch-flicker 3.5s ease-in-out infinite;
 }
 
 @keyframes torch-flicker {
-    0%, 100% { opacity: 1; }
-    45% { opacity: 0.85; }
-    50% { opacity: 1; }
-    78% { opacity: 0.92; }
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    45% {
+        opacity: 0.85;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    78% {
+        opacity: 0.92;
+    }
 }
 
-#loading-overlay, #pause-overlay {
+/* =========================
+   OVERLAYS
+   ========================= */
+
+#loading-overlay,
+#pause-overlay,
+#death-overlay,
+#complete-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(10, 10, 16, 0.88);
+
+    z-index: 10;
+
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+
     gap: 10px;
-    font-family: var(--font-pixel);
-    font-size: 13px;
-    color: var(--text-bone);
+
+    padding: 24px;
+
     text-align: center;
 }
 
-.pause-title {
-    font-size: 22px;
-    color: var(--accent-gold);
-    letter-spacing: 4px;
+#loading-overlay,
+#pause-overlay {
+    background: rgba(10, 10, 16, 0.88);
+
+    font-family: var(--font-pixel);
+    font-size: 13px;
+
+    color: var(--text-bone);
 }
 
-.pause-hint {
-    font-family: var(--font-body);
-    font-size: 18px;
-    color: var(--text-dim);
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* --- Controls bar --- */
-#controls-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
-    justify-content: center;
-    background: var(--bg-panel);
-    border: 3px solid var(--border-iron);
-    border-radius: 4px;
-    padding: 10px 16px;
-    font-size: 17px;
-    color: var(--text-dim);
-}
-
-#controls-bar b {
-    color: var(--accent-gold);
-}
-
-/* --- Death overlay --- */
-#pause-overlay, #death-overlay {
+#pause-overlay,
+#death-overlay {
     transition: opacity 0.2s ease-in-out;
 }
 
@@ -236,36 +357,119 @@ body {
     background: rgba(24, 8, 10, 0.92);
 }
 
+#complete-overlay {
+    gap: 14px;
+
+    background: rgba(10, 16, 12, 0.92);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =========================
+   PAUSE
+   ========================= */
+
+.pause-title {
+    font-size: 22px;
+
+    color: var(--accent-gold);
+    letter-spacing: 4px;
+}
+
+.pause-hint {
+    font-family: var(--font-body);
+    font-size: 18px;
+
+    color: var(--text-dim);
+}
+
+/* =========================
+   LEVEL TITLE
+   ========================= */
+
+#level-title {
+    position: absolute;
+
+    top: 10px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    z-index: 5;
+
+    max-width: calc(100% - 20px);
+
+    font-family: var(--font-pixel);
+    font-size: 10px;
+    line-height: 1.4;
+
+    color: var(--text-dim);
+    letter-spacing: 1px;
+
+    text-align: center;
+
+    pointer-events: none;
+}
+
+/* =========================
+   DEATH SCREEN
+   ========================= */
+
 .death-title {
     font-family: var(--font-pixel);
     font-size: 26px;
+    line-height: 1.3;
+
     color: var(--accent-blood);
     letter-spacing: 5px;
-    text-shadow: 0 0 14px rgba(184, 56, 63, 0.6);
+
+    text-shadow:
+        0 0 14px rgba(184, 56, 63, 0.6);
 }
 
 .death-buttons {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+
     gap: 14px;
+
     margin-top: 8px;
 }
 
 .death-btn {
     font-family: var(--font-pixel);
     font-size: 10px;
+
     padding: 12px 18px;
+
     background: var(--bg-panel);
     color: var(--text-bone);
+
     border: 2px solid var(--border-iron-light);
     border-radius: 3px;
+
     cursor: pointer;
+
     letter-spacing: 1px;
-    transition: border-color 0.15s, color 0.15s;
+
+    transition:
+        border-color 0.15s ease,
+        color 0.15s ease,
+        background-color 0.15s ease;
 }
 
-.death-btn:hover:not(:disabled) {
+.death-btn:hover:not(:disabled),
+.death-btn:focus-visible {
     border-color: var(--accent-gold);
     color: var(--accent-gold);
+}
+
+.death-btn:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
 }
 
 .death-btn-disabled,
@@ -274,58 +478,81 @@ body {
     cursor: not-allowed;
 }
 
-/* --- Level title над канвасом --- */
-#level-title {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--font-pixel);
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-    z-index: 2;
-    pointer-events: none;
-}
-
-/* --- Complete overlay --- */
-#complete-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(10, 16, 12, 0.92);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    text-align: center;
-}
+/* =========================
+   COMPLETE SCREEN
+   ========================= */
 
 .complete-title {
     font-family: var(--font-pixel);
     font-size: 24px;
+    line-height: 1.3;
+
     color: var(--accent-gold);
     letter-spacing: 4px;
-    text-shadow: 0 0 14px rgba(224, 165, 60, 0.6);
+
+    text-shadow:
+        0 0 14px rgba(224, 165, 60, 0.6);
 }
 
 .complete-rewards {
     font-size: 20px;
+    line-height: 1.3;
+
     color: var(--text-bone);
 }
 
-/* --- Level select page --- */
+/* =========================
+   CONTROLS
+   ========================= */
+
+#controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    gap: 18px;
+
+    width: 100%;
+
+    background: var(--bg-panel);
+
+    border: 3px solid var(--border-iron);
+    border-radius: 4px;
+
+    padding: 10px 16px;
+
+    font-size: 17px;
+    line-height: 1.2;
+
+    color: var(--text-dim);
+
+    text-align: center;
+}
+
+#controls-bar b {
+    color: var(--accent-gold);
+}
+
+/* =========================
+   LEVEL SELECT
+   ========================= */
+
 #select-container {
+    width: 100%;
     max-width: 980px;
+
     margin: 0 auto;
     padding: 24px;
 }
 
 #select-title {
+    margin-bottom: 24px;
+
     font-family: var(--font-pixel);
     font-size: 18px;
+    line-height: 1.4;
+
     color: var(--accent-gold);
-    margin-bottom: 24px;
     letter-spacing: 2px;
 }
 
@@ -336,26 +563,50 @@ body {
 
 #level-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+
+    grid-template-columns:
+        repeat(auto-fill, minmax(240px, 1fr));
+
     gap: 16px;
 }
 
+/* =========================
+   LEVEL CARDS
+   ========================= */
+
 .level-card {
     position: relative;
+
     display: block;
+
+    min-width: 0;
+
     background: var(--bg-panel);
+
     border: 3px solid var(--border-iron);
     border-radius: 4px;
+
     padding: 16px;
+
     text-decoration: none;
     color: var(--text-bone);
-    transition: border-color 0.15s, transform 0.1s;
+
+    transition:
+        border-color 0.15s ease,
+        transform 0.1s ease,
+        background-color 0.15s ease;
+
     cursor: pointer;
 }
 
 .level-card:hover {
     border-color: var(--accent-gold);
     transform: translateY(-2px);
+}
+
+.level-card:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
 }
 
 .level-card-locked {
@@ -372,50 +623,328 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+
+    gap: 10px;
+
     margin-bottom: 8px;
 }
 
 .level-card-world {
+    min-width: 0;
+
     font-size: 13px;
+    line-height: 1.2;
+
     color: var(--text-dim);
     letter-spacing: 1px;
+
+    overflow-wrap: anywhere;
 }
 
 .level-card-badge {
+    flex-shrink: 0;
+
     font-size: 13px;
     color: var(--accent-arcane);
 }
 
 .level-card-name {
+    margin-bottom: 8px;
+
     font-family: var(--font-pixel);
     font-size: 13px;
-    margin-bottom: 8px;
+    line-height: 1.5;
+
     color: var(--accent-gold);
+
+    overflow-wrap: anywhere;
 }
 
 .level-card-desc {
-    font-size: 16px;
-    color: var(--text-dim);
-    margin-bottom: 14px;
     min-height: 40px;
+
+    margin-bottom: 14px;
+
+    font-size: 16px;
+    line-height: 1.25;
+
+    color: var(--text-dim);
 }
 
 .level-card-footer {
     display: flex;
     justify-content: space-between;
+
+    gap: 10px;
+
     font-size: 14px;
+    line-height: 1.2;
+
     color: var(--text-dim);
 }
 
 .level-card-lock {
     position: absolute;
+
     top: 12px;
     right: 12px;
+
     font-size: 18px;
+
+    pointer-events: none;
 }
 
-@media (max-width: 600px) {
-    .hud-bar { width: 100px; }
-    .hud-left, .hud-right { min-width: unset; }
-    #controls-bar { font-size: 14px; gap: 10px; }
+/* =========================
+   PAGE HEADER
+   ========================= */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 16px;
+
+    margin-bottom: 24px;
+}
+
+.page-back-link {
+    color: var(--accent-gold);
+    text-decoration: none;
+
+    font-size: 16px;
+}
+
+.page-back-link:hover {
+    text-decoration: underline;
+}
+
+.page-back-link:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 3px;
+}
+
+/* =========================
+   SECTION TITLES
+   ========================= */
+
+.section-title {
+    margin: 20px 0 12px;
+
+    font-family: var(--font-pixel);
+    font-size: 13px;
+    line-height: 1.4;
+
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+
+/* =========================
+   EQUIPMENT
+   ========================= */
+
+#equipment-slots {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fill, minmax(180px, 1fr));
+
+    gap: 12px;
+
+    margin-bottom: 8px;
+}
+
+.equip-slot {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+
+    gap: 6px;
+
+    background: var(--bg-panel);
+
+    border: 3px solid var(--border-iron);
+    border-radius: 4px;
+
+    padding: 12px;
+}
+
+.equip-slot-empty {
+    opacity: 0.5;
+}
+
+.equip-slot-label {
+    font-family: var(--font-pixel);
+    font-size: 10px;
+    line-height: 1.4;
+
+    color: var(--accent-gold);
+}
+
+.equip-slot-item {
+    font-size: 16px;
+    line-height: 1.25;
+
+    color: var(--text-bone);
+
+    overflow-wrap: anywhere;
+}
+
+.small-btn {
+    align-self: flex-start;
+
+    padding: 6px 10px;
+
+    margin-top: 4px;
+
+    font-size: 9px;
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 700px) {
+    body {
+        align-items: flex-start;
+
+        padding: 12px;
+    }
+
+    #hud {
+        flex-direction: column;
+        gap: 14px;
+
+        padding: 12px;
+    }
+
+    .hud-left,
+    .hud-right {
+        width: 100%;
+    }
+
+    .hud-right {
+        align-items: flex-start;
+    }
+
+    .hud-bar {
+        width: auto;
+        flex: 1 1 auto;
+    }
+
+    .hud-value {
+        min-width: 55px;
+    }
+
+    #controls-bar {
+        gap: 10px;
+        padding: 10px;
+
+        font-size: 14px;
+    }
+
+    #select-container {
+        padding: 12px 0;
+    }
+
+    #select-title {
+        font-size: 15px;
+    }
+
+    #level-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-header {
+        align-items: flex-start;
+    }
+}
+
+/* =========================
+   SMALL PHONES
+   ========================= */
+
+@media (max-width: 420px) {
+    body {
+        padding: 8px;
+    }
+
+    #hud {
+        padding: 10px;
+    }
+
+    .hud-name {
+        font-size: 10px;
+    }
+
+    .hud-level {
+        font-size: 9px;
+    }
+
+    .hud-label {
+        width: 26px;
+        font-size: 8px;
+    }
+
+    .hud-bar {
+        height: 12px;
+    }
+
+    .hud-value {
+        min-width: 45px;
+        font-size: 14px;
+    }
+
+    .hud-gold .hud-value {
+        font-size: 16px;
+    }
+
+    .death-title {
+        font-size: 19px;
+        letter-spacing: 3px;
+    }
+
+    .complete-title {
+        font-size: 18px;
+        letter-spacing: 2px;
+    }
+
+    .pause-title {
+        font-size: 17px;
+        letter-spacing: 2px;
+    }
+
+    .death-buttons {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .death-btn {
+        width: 100%;
+    }
+}
+
+/* =========================
+   REDUCED MOTION
+   ========================= */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+    }
+
+    #vignette {
+        animation: none;
+    }
+
+    .level-card,
+    .death-btn,
+    #pause-overlay,
+    #death-overlay,
+    .hud-bar-fill {
+        transition: none;
+    }
 }
