@@ -114,7 +114,8 @@
             player = new Player(level.spawn.x, level.spawn.y);
             player.maxHealth = character.max_health;
             player.health = character.health;
-            player.strength = character.strength;
+            player.strength = character.effective_strength;
+            player.defense = character.effective_defense;
 
             enemies = spawnEnemies(level);
             movingPlatforms = spawnMovingPlatforms(level);
