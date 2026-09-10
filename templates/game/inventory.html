@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Realm - Инвентарь</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'game/css/game.css' %}">
+</head>
+<body>
+
+    <div id="select-container">
+        <div class="page-header">
+            <h1 id="select-title">Инвентарь</h1>
+            <a href="{% url 'game:select' %}" class="page-back-link">← К выбору уровня</a>
+        </div>
+
+        <h2 class="section-title">Экипировано</h2>
+        <div id="equipment-slots"></div>
+
+        <h2 class="section-title">Предметы</h2>
+        <div id="inventory-grid">
+            <p id="inventory-loading">Загрузка инвентаря...</p>
+        </div>
+    </div>
+
+    <script src="{% static 'game/js/inventory.js' %}"></script>
+</body>
+</html>
