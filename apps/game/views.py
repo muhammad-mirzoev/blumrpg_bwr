@@ -21,3 +21,8 @@ class PlayView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['level_id'] = kwargs['level_id']
         return context
+
+
+class InventoryPageView(LoginRequiredMixin, TemplateView):
+    """Страница инвентаря/экипировки. Логика полностью на JS (inventory.js)."""
+    template_name = 'game/inventory.html'

@@ -5,6 +5,7 @@ app_name = 'game'
 
 urlpatterns = [
     path('select/', views.LevelSelectView.as_view(), name='select'),
+    path('inventory/', views.InventoryPageView.as_view(), name='inventory'),
     path('play/<int:level_id>/', views.PlayView.as_view(), name='play'),
 ]
 
