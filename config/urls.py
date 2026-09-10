@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/character/', include('apps.characters.urls')),
     path('api/levels/', include('apps.levels.urls')),
+    path('api/items/', include('apps.items.urls')),
     path('game/', include('apps.game.urls')),
 ]
 
