@@ -27,6 +27,7 @@ class Player {
         this.invulnerableTimer = 0;
 
         this.strength = 10;
+        this.defense = 0;
 
         this.ATTACK_ACTIVE_FRAMES = 10;
         this.ATTACK_COOLDOWN_FRAMES = 28;
@@ -94,7 +95,10 @@ class Player {
     takeDamage(amount) {
         if (this.invulnerableTimer > 0) return false;
 
-        this.health = Math.max(0, this.health - amount);
+        // защита снижает входящий урон, минимум 1. До этого этапа defense
+        // игрока нигде не применялся - с появлением брони это исправлено.
+        const mitigated = Math.max(amount - this.defense, 1);
+        this.health = Math.max(0, this.health - mitigated);
         this.invulnerableTimer = this.INVULNERABILITY_FRAMES;
         return true;
     }
